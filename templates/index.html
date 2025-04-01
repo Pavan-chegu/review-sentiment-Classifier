@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .input-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .result-section {
+            display: none;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .sentiment-slider {
+            position: relative;
+            height: 60px;
+            background: linear-gradient(to right, #ff4b4b, #ffb700, #4CAF50);
+            border-radius: 30px;
+            margin: 2rem 0;
+        }
+
+        .slider-emoji {
+            position: absolute;
+            top: -30px;
+            transform: translateX(-50%);
+            font-size: 2.5rem;
+            transition: left 0.5s ease;
+        }
+
+        .slider-marker {
+            position: absolute;
+            top: 50%;
+            width: 20px;
+            height: 40px;
+            background: white;
+            border-radius: 10px;
+            transform: translate(-50%, -50%);
+            transition: left 0.5s ease;
+        }
+
+        .result-text {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .result-text h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .confidence {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+
+            header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✨ Sentiment Analyzer ✨</h1>
+            <p>Enter your text below to analyze its sentiment</p>
+        </header>
+
+        <div class="input-section">
+            <textarea id="text-input" placeholder="Type or paste your text here..."></textarea>
+            <button id="analyze-btn">Analyze Sentiment</button>
+        </div>
+
+        <div class="result-section" id="result-section">
+            <div class="sentiment-slider">
+                <div class="slider-emoji" id="slider-emoji">😐</div>
+                <div class="slider-marker" id="slider-marker"></div>
+            </div>
+            <div class="result-text">
+                <h2>Sentiment: <span id="sentiment-value">-</span></h2>
+                <p class="confidence">Confidence: <span id="confidence-value">-</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('analyze-btn').addEventListener('click', async () => {
+            const text = document.getElementById('text-input').value;
+            if (!text) {
+                alert('Please enter some text');
+                return;
+            }
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `text=${encodeURIComponent(text)}`
+                });
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+
+                // Update text results
+                document.getElementById('sentiment-value').textContent = result.sentiment;
+                document.getElementById('confidence-value').textContent = result.confidence_percentage;
+                
+                // Show results section
+                document.getElementById('result-section').style.display = 'block';
+
+                // Update slider position and emoji
+                const sliderPosition = result.raw_prediction * 100;
+                document.getElementById('slider-marker').style.left = `${sliderPosition}%`;
+                document.getElementById('slider-emoji').style.left = `${sliderPosition}%`;
+
+                // Update emoji based on sentiment
+                let emoji;
+                switch(result.sentiment) {
+                    case 'Positive':
+                        emoji = '😄';
+                        break;
+                    case 'Slightly Positive':
+                        emoji = '🙂';
+                        break;
+                    case 'Neutral':
+                        emoji = '😐';
+                        break;
+                    case 'Slightly Negative':
+                        emoji = '🙁';
+                        break;
+                    case 'Negative':
+                        emoji = '😢';
+                        break;
+                    default:
+                        emoji = '😐';
+                }
+                document.getElementById('slider-emoji').textContent = emoji;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while analyzing the text');
+            }
+        });
+    </script>
+</body>
+</html> 
